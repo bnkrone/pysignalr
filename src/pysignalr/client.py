@@ -60,6 +60,7 @@ class SignalRClient:
         self,
         url: str,
         protocol: Optional[Protocol] = None,
+        options: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
         ping_interval: int = DEFAULT_PING_INTERVAL,
         connection_timeout: int = DEFAULT_CONNECTION_TIMEOUT,
@@ -72,15 +73,36 @@ class SignalRClient:
         self._message_handlers: DefaultDict[str, List[Optional[Callable]]] = defaultdict(list)
         self._stream_handlers: Dict[str, Tuple[Optional[Callable], Optional[Callable], Optional[Callable]]] = {}
         self._invocation_handlers: Dict[str, Optional[Callable]] = {}
+        
+        self.options = {
+            "access_token_factory": None
+        }
+        self.skip_negotiation = False  # By default do not skip negotiation
+
+        if options is not None and type(options) != dict:
+            raise TypeError(f"options must be a dict {self.options}.")
+
+        if options is not None \
+                and "access_token_factory" in options.keys()\
+                and not callable(options["access_token_factory"]):
+            raise TypeError("access_token_factory must be a function without params")
+
+        if options is not None:
+            self.skip_negotiation = "skip_negotiation" in options.keys() and options["skip_negotiation"]
+        
+        self.options = self.options if options is None else options
+        auth_function = self.options["access_token_factory"] if "access_token_factory" in self.options else None       
 
         self._transport = WebsocketTransport(
             url=self._url,
             protocol=self._protocol,
             callback=self._on_message,
-            headers=self._headers,
+            headers=dict(self._headers),
             ping_interval=ping_interval,
             connection_timeout=connection_timeout,
             max_size=max_size,
+            skip_negotiation=self.skip_negotiation,
+            token_factory=auth_function
         )
         self._error_callback: Optional[Callable[[CompletionMessage], Awaitable[None]]] = None
 

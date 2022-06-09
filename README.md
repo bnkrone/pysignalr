@@ -49,6 +49,24 @@ with suppress(KeyboardInterrupt, asyncio.CancelledError):
     asyncio.run(main())
 ```
 
+Connection with custom access token factory method:
+```python
+async def main(self):
+    client = SignalRClient('https://api.tzkt.io/v1/events', options={
+        "access_token_factory": self.login
+    })
+    
+def login(self):
+    response = requests.post(
+        self.login_url,
+        json={
+            "username": self.email,
+            "password": self.password
+            },verify=False)
+    return response.json()["token"] 
+
+```
+
 ## Roadmap to the stable release
 
 - [ ] More documentation, both internal and user.

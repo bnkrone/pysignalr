@@ -41,6 +41,7 @@ class WebsocketTransport(Transport):
         url: str,
         protocol: Protocol,
         callback: Callable[[Message], Awaitable[None]],
+        token_factory: Callable[[], str] = None,
         headers: Optional[Dict[str, str]] = None,
         skip_negotiation: bool = False,
         ping_interval: int = DEFAULT_PING_INTERVAL,
@@ -56,6 +57,7 @@ class WebsocketTransport(Transport):
         self._ping_interval = ping_interval
         self._connection_timeout = connection_timeout
         self._max_size = max_size
+        self._token_factory = token_factory
 
         self._state = ConnectionState.disconnected
         self._connected = asyncio.Event()
@@ -73,6 +75,10 @@ class WebsocketTransport(Transport):
         self._error_callback = callback
 
     async def run(self) -> None:
+        if self._token_factory:
+            access_token = self._token_factory()
+            self._headers['Authorization'] = f'Bearer {access_token}'
+            
         while True:
             with suppress(NegotiationTimeout):
                 await self._loop()
